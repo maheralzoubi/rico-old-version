@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-const GB = "#00A94F";
+const G = "#00C957";
 
 const CATS = [
   ["🍽️","مطاعم","أفضل مطعم في الرياض بتقييم عالي مع الأسعار وأوقات العمل"],
@@ -37,7 +37,7 @@ const PRODS = [
   {g:"👶 أطفال",items:[["👶 حفاضات","صغير S,وسط M,كبير L,XL,XXL"],["👶 مناديل أطفال","علبة صغيرة,علبة كبيرة,كيس"],["🍼 حليب أطفال","200غ,400غ,900غ"]]},
 ];
 
-const APPS_LIST = [
+const APPS = [
   {sec:"🍽️ توصيل الطعام"},
   {ic:"🍔",nm:"هنقرستيشن",ds:"توصيل من آلاف المطاعم",url:"https://www.hungerstation.com",bg:"linear-gradient(135deg,#E8001C,#FF4444)"},
   {ic:"🛵",nm:"جاهز",ds:"أسرع توصيل في السعودية",url:"https://www.jahez.net",bg:"linear-gradient(135deg,#FF6B00,#FF9500)"},
@@ -59,15 +59,15 @@ const CITIES = ["الرياض","جدة","الدمام","مكة المكرمة","
 
 const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
 
-const WELCOME = `مرحباً! أنا <strong style="color:#00A94F">ريكو</strong> 👋<br/>مساعدك الذكي للتجارة في المملكة العربية السعودية 🇸🇦<br/><br/>📍 <strong>أفضل الأماكن القريبة</strong> — مطاعم، عيادات، ورش، كافيهات<br/>🔥 <strong>العروض والخصومات</strong> — أحدث تخفيضات المتاجر<br/>💰 <strong>مقارنة الأسعار</strong> — ابحث عن أرخص سعر<br/>🛒 <strong>سلة البقالة الذكية</strong> — 120+ صنف من كل الفئات<br/>📲 <strong>التطبيقات</strong> — هنقرستيشن، جاهز، كريم، نون وأكثر<br/><br/><span style="background:rgba(0,108,53,0.1);border:1px solid rgba(0,140,65,0.2);border-radius:18px;padding:3px 10px;font-size:11px;color:#00A94F">💡 فكرة م. طراد راكان الزبن | محلل نظم معلومات</span>`;
-
 const SYS = `أنت ريكو، مساعد ذكاء اصطناعي تجاري متخصص في المملكة العربية السعودية.
 صاحب الفكرة: طراد راكان الزبن، محلل نظم معلومات عربي سوري. إذا سُئلت عن هويتك قل: "أنا ريكو 🟢 فكرتي من إبداع المحلل طراد راكان الزبن، محلل نظم معلومات".
 مهامك: ١. أفضل الأماكن مع التقييم والسعر وأوقات العمل ٢. العروض والخصومات من المتاجر السعودية ٣. مقارنة الأسعار ٤. التوصية بالتطبيقات المناسبة.
-تعليمات: ابحث في الإنترنت أولاً، نظّم بإيموجي، 3-5 خيارات مرتبة، اقترح سؤالاً متابعاً، بالعربية دائماً.`;
+تعليمات: نظّم بإيموجي، 3-5 خيارات مرتبة، اقترح سؤالاً متابعاً، بالعربية دائماً.`;
 
-function fmt(text) {
-  return text
+const WELCOME = `مرحباً! أنا <strong style="color:#00C957">ريكو</strong> 👋<br/>مساعدك الذكي للتجارة في المملكة العربية السعودية 🇸🇦<br/><br/>📍 <strong>أفضل الأماكن القريبة</strong> — مطاعم، عيادات، ورش، كافيهات<br/>🔥 <strong>العروض والخصومات</strong> — أحدث تخفيضات المتاجر<br/>💰 <strong>مقارنة الأسعار</strong> — ابحث عن أرخص سعر<br/>🛒 <strong>سلة البقالة الذكية</strong> — 120+ صنف من كل الفئات<br/>📲 <strong>التطبيقات</strong> — هنقرستيشن، جاهز، كريم، نون وأكثر<br/><br/><span style="background:rgba(0,100,40,.12);border:1px solid rgba(0,201,87,.18);border-radius:20px;padding:3px 12px;font-size:11px;color:#00C957">💡 فكرة م. طراد راكان الزبن | محلل نظم معلومات</span>`;
+
+function fmt(t) {
+  return t
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
     .replace(/#{1,3} (.*?)(\n|$)/g, "<strong>$1</strong><br/>")
@@ -85,10 +85,10 @@ export default function Rico() {
   const [bProd, setBProd] = useState("");
   const [bSize, setBSize] = useState("");
   const [mDone, setMDone] = useState(false);
-  const ref = useRef(null);
+  const feedRef = useRef(null);
 
   useEffect(() => {
-    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
+    if (feedRef.current) feedRef.current.scrollTop = feedRef.current.scrollHeight;
   }, [msgs, busy]);
 
   const addMsg = (r, html) => setMsgs(p => [...p, { r, html }]);
@@ -110,13 +110,10 @@ export default function Rico() {
         }),
       });
       const d = await res.json();
-      if (!res.ok) { addMsg("a", `⚠️ خطأ: ${d.error?.message || res.statusText}`); }
-      else {
-        const rep = d.choices?.[0]?.message?.content || "عذراً لم أتمكن من الرد.";
-        addMsg("a", fmt(rep));
-      }
+      if (!res.ok) addMsg("a", `⚠️ خطأ: ${d.error?.message || res.statusText}`);
+      else addMsg("a", fmt(d.choices?.[0]?.message?.content || "عذراً لم أتمكن من الرد."));
     } catch {
-      addMsg("a", "عذراً، حدث خطأ. حاول مرة أخرى. 🙏");
+      addMsg("a", "عذراً، حدث خطأ في الاتصال. حاول مرة أخرى. 🙏");
     }
     setBusy(false);
   };
@@ -134,7 +131,7 @@ export default function Rico() {
 
   const searchBasket = () => {
     if (!basket.length) return;
-    const q = `قارن أسعار هذه المنتجات في الرياض بين بنده وكارفور والعثيم ونون وهايبر باندا:\n${basket.map((it, n) => `${n + 1}. ${it.nm} ${it.sz}`).join("\n")}\n\nأجمع التكلفة الإجمالية في كل متجر وحدد الأرخص ومقدار التوفير.`;
+    const q = `قارن أسعار هذه المنتجات في الرياض بين بنده وكارفور والعثيم ونون وهايبر باندا:\n${basket.map((it, n) => `${n + 1}. ${it.nm} ${it.sz}`).join("\n")}\n\nاجمع التكلفة الإجمالية لكل متجر وحدد الأرخص ومقدار التوفير.`;
     setModal(null);
     send(q);
   };
@@ -142,110 +139,131 @@ export default function Rico() {
   const openApp = (url, nm) => {
     setModal(null);
     addMsg("u", "افتح تطبيق " + nm);
-    addMsg("a", `جارٍ فتح <strong>${nm}</strong> 🚀<br/><a href="${url}" target="_blank" style="color:${GB};font-weight:700">اضغط هنا لفتح ${nm} ←</a>`);
+    addMsg("a", `جارٍ فتح <strong>${nm}</strong> 🚀<br/><a href="${url}" target="_blank" style="color:${G};font-weight:800">اضغط هنا لفتح ${nm} ←</a>`);
   };
 
   return (
     <div className="app">
 
-      {/* ── Header ── */}
-      <header className="header">
-        <div className="hdr-brand">
-          <div className="logo-box">
-            <svg width="20" height="20" viewBox="0 0 40 40" fill="none">
-              <rect x="18.5" y="17" width="3" height="13" rx="1.2" fill="white"/>
-              <path d="M20 17 Q13 11 7 13" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-              <path d="M20 17 Q20 9 20 3"  stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-              <path d="M20 17 Q27 11 33 13" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-              <path d="M7 33 L31 33"        stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-              <path d="M29.5 31 L33 33.5 L29.5 35.5" fill="white"/>
-            </svg>
+      {/* ══ Header ══ */}
+      <header className="hdr">
+        <div className="hdr-inner">
+          <div className="brand">
+            <div className="brand-logo">
+              <svg width="22" height="22" viewBox="0 0 40 40" fill="none">
+                <rect x="18.5" y="17" width="3" height="13" rx="1.2" fill="white"/>
+                <path d="M20 17 Q13 11 7 13"  stroke="white" strokeWidth="2.3" strokeLinecap="round"/>
+                <path d="M20 17 Q20 9 20 3"   stroke="white" strokeWidth="2.3" strokeLinecap="round"/>
+                <path d="M20 17 Q27 11 33 13" stroke="white" strokeWidth="2.3" strokeLinecap="round"/>
+                <path d="M7 33 L31 33"        stroke="white" strokeWidth="2.3" strokeLinecap="round"/>
+                <path d="M29.5 31 L33 33.5 L29.5 35.5" fill="white"/>
+              </svg>
+            </div>
+            <div>
+              <div className="brand-name">ريكو</div>
+              <div className="brand-badge">
+                <span className="badge-dot"/>
+                متاح الآن
+              </div>
+            </div>
           </div>
-          <div>
-            <div className="brand-name">ريكو <span className="online-dot"/></div>
-            <div className="brand-sub">RICO AI • تجاري</div>
+
+          <div className="hdr-btns">
+            {[["🛒","سلة","basket"],["📲","تطبيقات","apps"],["🏪","سجّل","merchant"]].map(([ic, lbl, m]) => (
+              <button key={m} className={`hbtn${m === "merchant" ? " hbtn-gold" : ""}`}
+                onClick={() => { setModal(m); setMDone(false); }}>
+                <span>{ic}</span>
+                <span className="hbtn-text">{lbl}</span>
+              </button>
+            ))}
           </div>
-        </div>
-        <div className="hdr-actions">
-          {[["🛒 سلة","basket"],["📲 تطبيقات","apps"],["🏪 سجّل نشاطك","merchant"]].map(([l, m]) => (
-            <button key={m} className={`btn-hdr${m === "merchant" ? " gold" : ""}`}
-              onClick={() => { setModal(m); setMDone(false); }}>
-              {l}
-            </button>
-          ))}
         </div>
       </header>
 
-      {/* ── Categories ── */}
-      <div className="cats-bar">
-        {CATS.map(([ic, lb, q], i) => (
-          <button key={i} className={`cat-btn${cat === i ? " active" : ""}`}
-            onClick={() => { setCat(i); send(q); }}>
-            {ic} {lb}
-          </button>
-        ))}
+      {/* ══ Categories ══ */}
+      <div className="cats-wrap">
+        <div className="cats-bar">
+          {CATS.map(([ic, lb, q], i) => (
+            <button key={i} className={`ccat${cat === i ? " active" : ""}`}
+              onClick={() => { setCat(i); send(q); }}>
+              <span>{ic}</span>
+              <span>{lb}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* ── Messages ── */}
-      <div className="messages" ref={ref}>
+      {/* ══ Messages ══ */}
+      <div className="feed" ref={feedRef}>
         {msgs.map((m, i) => (
-          <div key={i} className={`msg-row ${m.r}`}>
-            <div className={`avatar ${m.r}`}>{m.r === "a" ? "ر" : "👤"}</div>
-            <div className={`bubble ${m.r}`} dangerouslySetInnerHTML={{ __html: m.html }}/>
+          <div key={i} className={`mrow ${m.r}`}>
+            <div className={`av ${m.r}`}>{m.r === "a" ? "ر" : "👤"}</div>
+            <div className={`bub ${m.r}`} dangerouslySetInnerHTML={{ __html: m.html }}/>
           </div>
         ))}
+
         {busy && (
-          <div className="typing">
-            <div className="avatar a">ر</div>
-            <div className="typing-dots">
+          <div className="typing-row">
+            <div className="av a">ر</div>
+            <div className="typing-bub">
               <span className="dot"/><span className="dot"/><span className="dot"/>
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Suggestions ── */}
+      {/* ══ Suggestions ══ */}
       {showSugs && (
-        <div className="suggestions">
-          {["🍽️ أفضل مطعم قريب مني","🔥 عروض اليوم","📱 أرخص سعر iPhone الآن","🛒 عروض بنده وكارفور"].map((s, i) => (
-            <button key={i} className="sug-btn" onClick={() => send(s)}>{s}</button>
-          ))}
+        <div className="sugs-wrap">
+          <div className="sugs">
+            {[
+              ["🍽️","أفضل مطعم قريب مني"],
+              ["🔥","عروض اليوم"],
+              ["📱","أرخص سعر iPhone الآن"],
+              ["🛒","عروض بنده وكارفور"],
+            ].map(([ic, txt], i) => (
+              <button key={i} className="sug" onClick={() => send(`${ic} ${txt}`)}>
+                <span>{ic}</span>
+                <span>{txt}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* ── Input ── */}
-      <div className="input-area">
+      {/* ══ Composer ══ */}
+      <div className="composer">
         <input
-          className="chat-input"
+          className="composer-input"
           value={inp}
           onChange={e => setInp(e.target.value)}
           onKeyDown={e => e.key === "Enter" && send(inp)}
-          placeholder="اسألني عن مطعم، عرض، سعر، ورشة... 🔍"
+          placeholder="اسألني عن مطعم، عرض، سعر، ورشة..."
         />
-        <button className="send-btn" onClick={() => send(inp)} disabled={busy}>🚀</button>
+        <button className="send" onClick={() => send(inp)} disabled={busy}>🚀</button>
       </div>
-      <div className="footer-credit">💡 فكرة م. طراد راكان الزبن • محلل نظم معلومات</div>
+      <p className="credit">💡 فكرة م. طراد راكان الزبن • محلل نظم معلومات</p>
 
-      {/* ── Modal ── */}
+      {/* ══ Modal ══ */}
       {modal && (
-        <div className="modal-overlay" onClick={() => setModal(null)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()}>
+        <div className="overlay" onClick={() => setModal(null)}>
+          <div className="mbox" onClick={e => e.stopPropagation()}>
 
-            {/* Basket */}
+            {/* ── Basket ── */}
             {modal === "basket" && <>
-              <div className="modal-hdr green">
-                <div>
-                  <div className="modal-title">🛒 مصمّم السلة الغذائية</div>
-                  <div className="modal-sub">أضف المنتجات وريكو يبحث عن أرخص الأسعار</div>
+              <div className="mhdr green">
+                <div className="mhdr-info">
+                  <div className="mhdr-title">🛒 مصمّم السلة الغذائية</div>
+                  <div className="mhdr-sub">أضف منتجاتك وريكو يبحث عن أرخص الأسعار</div>
                 </div>
-                <button className="modal-close" onClick={() => setModal(null)}>✕</button>
+                <button className="mclose" onClick={() => setModal(null)}>✕</button>
               </div>
-              <div className="modal-body">
-                <div className="f-grid f-grid-3">
+              <div className="mbody">
+                <div className="fgrid fgrid3">
                   <div>
-                    <label className="f-label">المنتج</label>
-                    <select className="f-select" value={bProd} onChange={e => { setBProd(e.target.value); setBSize(""); }}>
-                      <option value="">-- اختر --</option>
+                    <label className="flabel">المنتج</label>
+                    <select className="fselect" value={bProd} onChange={e => { setBProd(e.target.value); setBSize(""); }}>
+                      <option value="">-- اختر المنتج --</option>
                       {PRODS.map(g => (
                         <optgroup key={g.g} label={g.g}>
                           {g.items.map(([nm]) => <option key={nm} value={nm}>{nm}</option>)}
@@ -254,120 +272,135 @@ export default function Rico() {
                     </select>
                   </div>
                   <div>
-                    <label className="f-label">الحجم</label>
-                    <select className="f-select" value={bSize} onChange={e => setBSize(e.target.value)}>
+                    <label className="flabel">الحجم / الكمية</label>
+                    <select className="fselect" value={bSize} onChange={e => setBSize(e.target.value)}>
                       <option value="">-- اختر --</option>
                       {sizes().map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
-                  <button className="add-btn" onClick={addToBasket}>+</button>
+                  <button className="addbtn" onClick={addToBasket} title="أضف">+</button>
                 </div>
+
                 {basket.length === 0
-                  ? <div className="basket-empty">🛒 السلة فارغة — أضف منتجات للمقارنة</div>
-                  : <div className="basket-list">
-                      <div className="basket-list-hdr">🛒 السلة ({basket.length} منتجات)</div>
+                  ? <div className="bkempty">🛒 السلة فارغة — أضف منتجات للمقارنة</div>
+                  : <div className="bklist">
+                      <div className="bklhdr">🛒 السلة ({basket.length} منتجات)</div>
                       {basket.map(it => (
-                        <div key={it.id} className="basket-item">
-                          <span>{it.nm} — <span style={{ color: GB, fontWeight: 700 }}>{it.sz}</span></span>
-                          <button className="basket-rm" onClick={() => setBasket(p => p.filter(i => i.id !== it.id))}>✕</button>
+                        <div key={it.id} className="bkitem">
+                          <span>
+                            {it.nm} —{" "}
+                            <span style={{ color: G, fontWeight: 800 }}>{it.sz}</span>
+                          </span>
+                          <button className="bkrm" onClick={() => setBasket(p => p.filter(i => i.id !== it.id))}>✕</button>
                         </div>
                       ))}
                     </div>
                 }
-                <button className="btn-full green" onClick={searchBasket}>🔍 ابحث عن أرخص الأسعار</button>
-                <div className="btn-note">يقارن بين بنده • كارفور • العثيم • نون • هايبر باندا</div>
+
+                <button className="btnfull green" onClick={searchBasket}>
+                  🔍 ابحث عن أرخص الأسعار
+                </button>
+                <p className="btnnote">يقارن بين بنده • كارفور • العثيم • نون • هايبر باندا</p>
               </div>
             </>}
 
-            {/* Apps */}
+            {/* ── Apps ── */}
             {modal === "apps" && <>
-              <div className="modal-hdr gold">
-                <div>
-                  <div className="modal-title gold">📲 التطبيقات المتاحة</div>
-                  <div className="modal-sub">اضغط على أي تطبيق لفتحه مباشرة</div>
+              <div className="mhdr gold">
+                <div className="mhdr-info">
+                  <div className="mhdr-title gold">📲 التطبيقات المتاحة</div>
+                  <div className="mhdr-sub">اضغط على أي تطبيق لفتحه مباشرة</div>
                 </div>
-                <button className="modal-close" onClick={() => setModal(null)}>✕</button>
+                <button className="mclose" onClick={() => setModal(null)}>✕</button>
               </div>
-              <div className="modal-body">
-                {APPS_LIST.map((a, i) => a.sec
-                  ? <div key={i} className="app-section">{a.sec}</div>
-                  : <div key={i} className="app-item" onClick={() => openApp(a.url, a.nm)}>
-                      <div className="app-icon" style={{ background: a.bg, color: a.tc || "#fff" }}>{a.ic}</div>
+              <div className="mbody">
+                {APPS.map((a, i) => a.sec
+                  ? <div key={i} className="asec">{a.sec}</div>
+                  : <div key={i} className="aitem" onClick={() => openApp(a.url, a.nm)}>
+                      <div className="aicon" style={{ background: a.bg, color: a.tc || "#fff" }}>{a.ic}</div>
                       <div style={{ flex: 1 }}>
-                        <div className="app-name">{a.nm}</div>
-                        <div className="app-ds">{a.ds}</div>
+                        <div className="aname">{a.nm}</div>
+                        <div className="ads">{a.ds}</div>
                       </div>
-                      <span className="app-arr">←</span>
+                      <span className="aarr">←</span>
                     </div>
                 )}
-                <button className="btn-full green" style={{ marginTop: 8 }}
+                <button className="btnfull green" style={{ marginTop: 10 }}
                   onClick={() => { setModal(null); send("قارن بين هنقرستيشن وجاهز وكريم من حيث السرعة والسعر والمطاعم المتاحة"); }}>
                   🤖 اسأل ريكو يقارن بين التطبيقات
                 </button>
               </div>
             </>}
 
-            {/* Merchant */}
+            {/* ── Merchant ── */}
             {modal === "merchant" && <>
-              <div className="modal-hdr gold">
-                <div>
-                  <div className="modal-title gold">🏪 سجّل نشاطك التجاري</div>
-                  <div className="modal-sub">أضف متجرك لقاعدة بيانات ريكو</div>
+              <div className="mhdr gold">
+                <div className="mhdr-info">
+                  <div className="mhdr-title gold">🏪 سجّل نشاطك التجاري</div>
+                  <div className="mhdr-sub">أضف متجرك لقاعدة بيانات ريكو</div>
                 </div>
-                <button className="modal-close" onClick={() => setModal(null)}>✕</button>
+                <button className="mclose" onClick={() => setModal(null)}>✕</button>
               </div>
+
               {mDone
                 ? <div className="success">
-                    <div className="success-emoji">🎉</div>
-                    <div className="success-title">تم التسجيل بنجاح!</div>
-                    <div className="success-txt">تم إضافة نشاطك لقاعدة بيانات ريكو.<br/>سيظهر في النتائج خلال 24 ساعة.</div>
-                    <button className="btn-full green" style={{ maxWidth: 200, margin: "0 auto", display: "block" }}
-                      onClick={() => setModal(null)}>حسناً ✓</button>
+                    <div className="s-emoji">🎉</div>
+                    <div className="s-title">تم التسجيل بنجاح!</div>
+                    <div className="s-text">
+                      تم إضافة نشاطك لقاعدة بيانات ريكو.<br/>
+                      سيظهر في النتائج خلال 24 ساعة.
+                    </div>
+                    <button className="btnfull green"
+                      style={{ maxWidth: 200, margin: "0 auto", display: "block" }}
+                      onClick={() => setModal(null)}>
+                      حسناً ✓
+                    </button>
                   </div>
-                : <div className="modal-body">
-                    <label className="f-label">🏷️ اسم النشاط *</label>
-                    <input className="f-input" type="text" placeholder="مثال: مطعم الأصيل"/>
 
-                    <label className="f-label">📂 نوع النشاط *</label>
-                    <select className="f-select">
-                      <option value="">-- اختر --</option>
+                : <div className="mbody">
+                    <label className="flabel">🏷️ اسم النشاط *</label>
+                    <input className="finput" type="text" placeholder="مثال: مطعم الأصيل"/>
+
+                    <label className="flabel">📂 نوع النشاط *</label>
+                    <select className="fselect">
+                      <option value="">-- اختر النوع --</option>
                       {MERCHANT_TYPES.map(t => <option key={t}>{t}</option>)}
                     </select>
 
-                    <div className="f-grid f-grid-2">
+                    <div className="fgrid fgrid2">
                       <div>
-                        <label className="f-label">🏙️ المدينة</label>
-                        <select className="f-select">
+                        <label className="flabel">🏙️ المدينة</label>
+                        <select className="fselect">
                           {CITIES.map(c => <option key={c}>{c}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label className="f-label">📍 الحي</label>
-                        <input className="f-input" type="text" placeholder="حي النرجس"/>
+                        <label className="flabel">📍 الحي</label>
+                        <input className="finput" type="text" placeholder="حي النرجس"/>
                       </div>
                     </div>
 
-                    <div className="f-grid f-grid-2">
+                    <div className="fgrid fgrid2">
                       <div>
-                        <label className="f-label">📞 الهاتف *</label>
-                        <input className="f-input f-ltr" type="tel" placeholder="05XXXXXXXX"/>
+                        <label className="flabel">📞 الهاتف *</label>
+                        <input className="finput fltr" type="tel" placeholder="05XXXXXXXX"/>
                       </div>
                       <div>
-                        <label className="f-label">💬 واتساب</label>
-                        <input className="f-input f-ltr" type="tel" placeholder="05XXXXXXXX"/>
+                        <label className="flabel">💬 واتساب</label>
+                        <input className="finput fltr" type="tel" placeholder="05XXXXXXXX"/>
                       </div>
                     </div>
 
-                    <label className="f-label">🕐 أوقات العمل</label>
-                    <input className="f-input" type="text" placeholder="السبت - الخميس 9ص - 11م"/>
+                    <label className="flabel">🕐 أوقات العمل</label>
+                    <input className="finput" type="text" placeholder="السبت - الخميس 9ص - 11م"/>
 
-                    <label className="f-label">🔥 العروض والخصومات</label>
-                    <textarea className="f-textarea" placeholder="مثال: خصم 20% على وجبات الغداء"/>
+                    <label className="flabel">🔥 العروض والخصومات</label>
+                    <textarea className="ftextarea" placeholder="مثال: خصم 20% على وجبات الغداء"/>
 
-                    <label className="f-label">📝 وصف النشاط</label>
-                    <textarea className="f-textarea" placeholder="اكتب وصفاً مختصراً..."/>
+                    <label className="flabel">📝 وصف النشاط</label>
+                    <textarea className="ftextarea" placeholder="اكتب وصفاً مختصراً يجذب العملاء..."/>
 
-                    <button className="btn-full gold"
+                    <button className="btnfull gold"
                       onClick={() => {
                         setMDone(true);
                         setTimeout(() => addMsg("a", "تم تسجيل نشاطك في ريكو! 🎉 سيظهر في نتائج البحث خلال 24 ساعة."), 500);
