@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-const G = "#006C35", GB = "#00A94F", GOLD = "#C8A84C", GLDL = "#E8C86A", DARK = "#03100A", D2 = "#071A0F";
+const GB = "#00A94F";
 
 const CATS = [
   ["🍽️","مطاعم","أفضل مطعم في الرياض بتقييم عالي مع الأسعار وأوقات العمل"],
@@ -53,246 +53,334 @@ const APPS_LIST = [
   {ic:"🟣",nm:"جيني",ds:"تاكسي ذكي",url:"https://www.jeeny.com",bg:"linear-gradient(135deg,#7B2FBE,#9B59B6)"},
 ];
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
-
 const MERCHANT_TYPES = ["🍽️ مطعم","☕ كافيه","🏥 عيادة طبية","🦷 عيادة أسنان","💊 صيدلية","✂️ صالون حلاقة","💆 مركز تجميل","🏋️ نادي رياضي","🛒 سوبرماركت","🚗 تأجير سيارات","🔧 ورشة سيارات","📦 شحن ونقل","🏡 استراحة / شاليه","✈️ سفر وسياحة","🛡️ تأمين","💳 تقسيط","👷 استقدام","🧹 تنظيف","👕 مغسلة","📱 صيانة جوالات","📱 إلكترونيات","🛋️ أثاث","🏗️ تأجير معدات","💼 خدمات أخرى"];
 
+const CITIES = ["الرياض","جدة","الدمام","مكة المكرمة","المدينة المنورة","الخبر","الطائف","تبوك","أبها","القصيم","حائل","جازان"];
 
+const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
 
-export default function Rico() {
-  const [msgs, setMsgs] = useState([{r:"a",html:`مرحباً! أنا <strong style="color:${GB}">ريكو</strong> 👋<br/>مساعدك الذكي للتجارة في المملكة العربية السعودية 🇸🇦<br/><br/>📍 <strong>أفضل الأماكن القريبة</strong> — مطاعم، عيادات، ورش، كافيهات<br/>🔥 <strong>العروض والخصومات</strong> — أحدث تخفيضات المتاجر<br/>💰 <strong>مقارنة الأسعار</strong> — ابحث عن أرخص سعر<br/>🛒 <strong>سلة البقالة الذكية</strong> — 120+ صنف من كل الفئات<br/>📲 <strong>التطبيقات</strong> — هنقرستيشن، جاهز، كريم، نون وأكثر<br/><br/><span style="background:rgba(0,108,53,0.1);border:1px solid rgba(0,140,65,0.2);border-radius:18px;padding:3px 10px;font-size:11px;color:${GB}">💡 فكرة م. طراد راكان الزبن | محلل نظم معلومات</span>`}]);
-  const [inp,setInp] = useState("");
-  const [busy,setBusy] = useState(false);
-  const [cat,setCat] = useState(null);
-  const [showSugs,setShowSugs] = useState(true);
-  const [modal,setModal] = useState(null);
-  const [basket,setBasket] = useState([]);
-  const [bProd,setBProd] = useState("");
-  const [bSize,setBSize] = useState("");
-  const [mDone,setMDone] = useState(false);
-  const ref = useRef(null);
+const WELCOME = `مرحباً! أنا <strong style="color:#00A94F">ريكو</strong> 👋<br/>مساعدك الذكي للتجارة في المملكة العربية السعودية 🇸🇦<br/><br/>📍 <strong>أفضل الأماكن القريبة</strong> — مطاعم، عيادات، ورش، كافيهات<br/>🔥 <strong>العروض والخصومات</strong> — أحدث تخفيضات المتاجر<br/>💰 <strong>مقارنة الأسعار</strong> — ابحث عن أرخص سعر<br/>🛒 <strong>سلة البقالة الذكية</strong> — 120+ صنف من كل الفئات<br/>📲 <strong>التطبيقات</strong> — هنقرستيشن، جاهز، كريم، نون وأكثر<br/><br/><span style="background:rgba(0,108,53,0.1);border:1px solid rgba(0,140,65,0.2);border-radius:18px;padding:3px 10px;font-size:11px;color:#00A94F">💡 فكرة م. طراد راكان الزبن | محلل نظم معلومات</span>`;
 
-  useEffect(()=>{ if(ref.current) ref.current.scrollTop=ref.current.scrollHeight; },[msgs,busy]);
-
-  const addMsg=(r,html)=>setMsgs(p=>[...p,{r,html}]);
-
-  const send=async(text)=>{
-    if(busy||!text.trim()) return;
-    const txt=text.trim();
-    setInp(""); setBusy(true); setShowSugs(false);
-    addMsg("u",txt);
-    const sys=`أنت ريكو، مساعد ذكاء اصطناعي تجاري متخصص في المملكة العربية السعودية.
+const SYS = `أنت ريكو، مساعد ذكاء اصطناعي تجاري متخصص في المملكة العربية السعودية.
 صاحب الفكرة: طراد راكان الزبن، محلل نظم معلومات عربي سوري. إذا سُئلت عن هويتك قل: "أنا ريكو 🟢 فكرتي من إبداع المحلل طراد راكان الزبن، محلل نظم معلومات".
 مهامك: ١. أفضل الأماكن مع التقييم والسعر وأوقات العمل ٢. العروض والخصومات من المتاجر السعودية ٣. مقارنة الأسعار ٤. التوصية بالتطبيقات المناسبة.
 تعليمات: ابحث في الإنترنت أولاً، نظّم بإيموجي، 3-5 خيارات مرتبة، اقترح سؤالاً متابعاً، بالعربية دائماً.`;
-    try{
-      const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "Authorization":`Bearer ${GROQ_API_KEY}`
-        },
-        body:JSON.stringify({
-          model:"llama-3.3-70b-versatile",
-          messages:[
-            {role:"system",content:sys},
-            {role:"user",content:txt}
-          ],
-          max_tokens:1024,
-          temperature:0.7
-        })
+
+function fmt(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/#{1,3} (.*?)(\n|$)/g, "<strong>$1</strong><br/>")
+    .replace(/\n/g, "<br/>");
+}
+
+export default function Rico() {
+  const [msgs, setMsgs] = useState([{ r: "a", html: WELCOME }]);
+  const [inp, setInp] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [cat, setCat] = useState(null);
+  const [showSugs, setShowSugs] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [basket, setBasket] = useState([]);
+  const [bProd, setBProd] = useState("");
+  const [bSize, setBSize] = useState("");
+  const [mDone, setMDone] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
+  }, [msgs, busy]);
+
+  const addMsg = (r, html) => setMsgs(p => [...p, { r, html }]);
+
+  const send = async (text) => {
+    if (busy || !text.trim()) return;
+    const txt = text.trim();
+    setInp(""); setBusy(true); setShowSugs(false);
+    addMsg("u", txt);
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_KEY}` },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "system", content: SYS }, { role: "user", content: txt }],
+          max_tokens: 1024,
+          temperature: 0.7,
+        }),
       });
-      const d=await res.json();
-      if(!res.ok){ addMsg("a",`⚠️ خطأ: ${d.error?.message||res.statusText}`); setBusy(false); return; }
-      const rep=d.choices?.[0]?.message?.content||"عذراً لم أتمكن من الرد.";
-      const fmt=rep.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>").replace(/\*(.*?)\*/g,"<em>$1</em>").replace(/#{1,3} (.*?)(\n|$)/g,"<strong>$1</strong><br/>").replace(/\n/g,"<br/>");
-      addMsg("a",fmt);
-    }catch{ addMsg("a","عذراً، حدث خطأ. حاول مرة أخرى. 🙏"); }
+      const d = await res.json();
+      if (!res.ok) { addMsg("a", `⚠️ خطأ: ${d.error?.message || res.statusText}`); }
+      else {
+        const rep = d.choices?.[0]?.message?.content || "عذراً لم أتمكن من الرد.";
+        addMsg("a", fmt(rep));
+      }
+    } catch {
+      addMsg("a", "عذراً، حدث خطأ. حاول مرة أخرى. 🙏");
+    }
     setBusy(false);
   };
 
-  const sizes=()=>{ for(const g of PRODS) for(const [nm,sz] of g.items) if(nm===bProd) return sz.split(","); return []; };
-  const addToBasket=()=>{ if(!bProd||!bSize) return; setBasket(p=>[...p,{nm:bProd,sz:bSize,id:Date.now()}]); setBProd(""); setBSize(""); };
-  const searchBasket=()=>{ if(!basket.length) return; const q=`قارن أسعار هذه المنتجات في الرياض بين بنده وكارفور والعثيم ونون وهايبر باندا:\n${basket.map((i,n)=>`${n+1}. ${i.nm} ${i.sz}`).join("\n")}\n\nأجمع التكلفة الإجمالية في كل متجر وحدد الأرخص ومقدار التوفير.`; setModal(null); send(q); };
-  const openApp=(url,nm)=>{ setModal(null); addMsg("u","افتح تطبيق "+nm); addMsg("a",`جارٍ فتح <strong>${nm}</strong> 🚀<br/><a href="${url}" target="_blank" style="color:${GB};font-weight:700">اضغط هنا لفتح ${nm} ←</a>`); };
+  const sizes = () => {
+    for (const g of PRODS) for (const [nm, sz] of g.items) if (nm === bProd) return sz.split(",");
+    return [];
+  };
 
-  const inp_style={width:"100%",background:"rgba(255,255,255,0.04)",border:`1px solid rgba(0,140,65,0.18)`,borderRadius:8,padding:"8px 11px",color:"#E8F0EA",fontSize:12,fontFamily:"inherit",outline:"none",direction:"rtl",marginBottom:10};
-  const sel_style={...inp_style,background:D2};
+  const addToBasket = () => {
+    if (!bProd || !bSize) return;
+    setBasket(p => [...p, { nm: bProd, sz: bSize, id: Date.now() }]);
+    setBProd(""); setBSize("");
+  };
+
+  const searchBasket = () => {
+    if (!basket.length) return;
+    const q = `قارن أسعار هذه المنتجات في الرياض بين بنده وكارفور والعثيم ونون وهايبر باندا:\n${basket.map((it, n) => `${n + 1}. ${it.nm} ${it.sz}`).join("\n")}\n\nأجمع التكلفة الإجمالية في كل متجر وحدد الأرخص ومقدار التوفير.`;
+    setModal(null);
+    send(q);
+  };
+
+  const openApp = (url, nm) => {
+    setModal(null);
+    addMsg("u", "افتح تطبيق " + nm);
+    addMsg("a", `جارٍ فتح <strong>${nm}</strong> 🚀<br/><a href="${url}" target="_blank" style="color:${GB};font-weight:700">اضغط هنا لفتح ${nm} ←</a>`);
+  };
 
   return (
-    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:DARK,fontFamily:"'Tajawal',sans-serif",direction:"rtl",color:"#E8F0EA",overflow:"hidden"}}>
+    <div className="app">
 
-      {/* HDR */}
-      <div style={{flexShrink:0,background:"rgba(3,16,10,0.98)",borderBottom:"1px solid rgba(0,140,65,0.2)",padding:"8px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{width:34,height:34,borderRadius:10,background:`linear-gradient(135deg,${G},${GB})`,display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <svg width="20" height="20" viewBox="0 0 40 40" fill="none"><rect x="18.5" y="17" width="3" height="13" rx="1.2" fill="white"/><path d="M20 17 Q13 11 7 13" stroke="white" strokeWidth="2.2" strokeLinecap="round"/><path d="M20 17 Q20 9 20 3" stroke="white" strokeWidth="2.2" strokeLinecap="round"/><path d="M20 17 Q27 11 33 13" stroke="white" strokeWidth="2.2" strokeLinecap="round"/><path d="M7 33 L31 33" stroke="white" strokeWidth="2.2" strokeLinecap="round"/><path d="M29.5 31 L33 33.5 L29.5 35.5" fill="white"/></svg>
+      {/* ── Header ── */}
+      <header className="header">
+        <div className="hdr-brand">
+          <div className="logo-box">
+            <svg width="20" height="20" viewBox="0 0 40 40" fill="none">
+              <rect x="18.5" y="17" width="3" height="13" rx="1.2" fill="white"/>
+              <path d="M20 17 Q13 11 7 13" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+              <path d="M20 17 Q20 9 20 3"  stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+              <path d="M20 17 Q27 11 33 13" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+              <path d="M7 33 L31 33"        stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+              <path d="M29.5 31 L33 33.5 L29.5 35.5" fill="white"/>
+            </svg>
           </div>
           <div>
-            <div style={{fontSize:17,fontWeight:900}}>ريكو <span style={{width:6,height:6,background:GB,borderRadius:"50%",display:"inline-block",marginLeft:2}}></span></div>
-            <div style={{fontSize:8,color:"#6B9E76",letterSpacing:1}}>RICO AI • تجاري</div>
+            <div className="brand-name">ريكو <span className="online-dot"/></div>
+            <div className="brand-sub">RICO AI • تجاري</div>
           </div>
         </div>
-        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-          {[["🛒 سلة","basket"],["📲 تطبيقات","apps"],["🏪 سجّل نشاطك","merchant"]].map(([l,m])=>(
-            <button key={m} onClick={()=>{setModal(m);setMDone(false);}} style={{background:"transparent",border:`1px solid ${m==="merchant"?"rgba(200,168,76,0.3)":"rgba(0,140,65,0.22)"}`,borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer",color:m==="merchant"?GOLD:"#6B9E76",fontFamily:"inherit"}}>{l}</button>
+        <div className="hdr-actions">
+          {[["🛒 سلة","basket"],["📲 تطبيقات","apps"],["🏪 سجّل نشاطك","merchant"]].map(([l, m]) => (
+            <button key={m} className={`btn-hdr${m === "merchant" ? " gold" : ""}`}
+              onClick={() => { setModal(m); setMDone(false); }}>
+              {l}
+            </button>
           ))}
         </div>
-      </div>
+      </header>
 
-      {/* CATS */}
-      <div style={{flexShrink:0,display:"flex",gap:6,padding:"6px 14px",overflowX:"auto",borderBottom:"1px solid rgba(0,140,65,0.07)"}}>
-        {CATS.map(([ic,lb,q],i)=>(
-          <button key={i} onClick={()=>{setCat(i);send(q);}} style={{background:cat===i?"rgba(0,108,53,0.15)":"rgba(255,255,255,0.04)",border:`1px solid ${cat===i?GB:"rgba(0,140,65,0.18)"}`,color:cat===i?GB:"#6B9E76",borderRadius:18,padding:"4px 12px",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit"}}>
+      {/* ── Categories ── */}
+      <div className="cats-bar">
+        {CATS.map(([ic, lb, q], i) => (
+          <button key={i} className={`cat-btn${cat === i ? " active" : ""}`}
+            onClick={() => { setCat(i); send(q); }}>
             {ic} {lb}
           </button>
         ))}
       </div>
 
-      {/* MSGS */}
-      <div ref={ref} style={{flex:1,overflowY:"auto",padding:14,display:"flex",flexDirection:"column",gap:12}}>
-        {msgs.map((m,i)=>(
-          <div key={i} style={{display:"flex",gap:8,flexDirection:m.r==="u"?"row-reverse":"row",alignItems:"flex-start",animation:"fi .3s ease"}}>
-            <div style={{width:28,height:28,borderRadius:8,background:m.r==="a"?`linear-gradient(135deg,${G},${GB})`:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:m.r==="a"?12:14,fontWeight:900,color:"#fff",flexShrink:0}}>{m.r==="a"?"ر":"👤"}</div>
-            <div style={{maxWidth:"80%",borderRadius:m.r==="a"?"2px 14px 14px 14px":"14px 2px 14px 14px",padding:"10px 13px",fontSize:13,lineHeight:1.8,background:m.r==="a"?"rgba(255,255,255,0.04)":"rgba(0,108,53,0.18)",border:`1px solid ${m.r==="a"?"rgba(255,255,255,0.07)":"rgba(0,140,65,0.25)"}`}} dangerouslySetInnerHTML={{__html:m.html}}/>
+      {/* ── Messages ── */}
+      <div className="messages" ref={ref}>
+        {msgs.map((m, i) => (
+          <div key={i} className={`msg-row ${m.r}`}>
+            <div className={`avatar ${m.r}`}>{m.r === "a" ? "ر" : "👤"}</div>
+            <div className={`bubble ${m.r}`} dangerouslySetInnerHTML={{ __html: m.html }}/>
           </div>
         ))}
-        {busy&&<div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
-          <div style={{width:28,height:28,borderRadius:8,background:`linear-gradient(135deg,${G},${GB})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:900,color:"#fff",flexShrink:0}}>ر</div>
-          <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"2px 14px 14px 14px",padding:"12px 14px",display:"flex",gap:5}}>
-            {[0,.2,.4].map((d,i)=><span key={i} style={{width:7,height:7,borderRadius:"50%",background:GB,display:"block",animation:`bc 1.2s ${d}s infinite`}}></span>)}
+        {busy && (
+          <div className="typing">
+            <div className="avatar a">ر</div>
+            <div className="typing-dots">
+              <span className="dot"/><span className="dot"/><span className="dot"/>
+            </div>
           </div>
-        </div>}
+        )}
       </div>
 
-      {/* SUGS */}
-      {showSugs&&<div style={{flexShrink:0,display:"flex",gap:6,flexWrap:"wrap",padding:"4px 14px 10px"}}>
-        {["🍽️ أفضل مطعم قريب مني","🔥 عروض اليوم","📱 أرخص سعر iPhone الآن","🛒 عروض بنده وكارفور"].map((s,i)=>(
-          <button key={i} onClick={()=>send(s)} style={{background:"rgba(0,108,53,0.1)",border:"1px solid rgba(0,140,65,0.22)",color:GB,borderRadius:18,padding:"5px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{s}</button>
-        ))}
-      </div>}
-
-      {/* INPUT */}
-      <div style={{flexShrink:0,padding:"8px 14px",borderTop:"1px solid rgba(0,140,65,0.2)",background:"rgba(0,0,0,0.15)",display:"flex",gap:8}}>
-        <input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send(inp)}
-          placeholder="اسألني عن مطعم، عرض، سعر، ورشة... 🔍"
-          style={{flex:1,background:"rgba(255,255,255,0.05)",border:"1.5px solid rgba(0,140,65,0.22)",borderRadius:11,padding:"10px 14px",color:"#E8F0EA",fontSize:13,outline:"none",direction:"rtl",fontFamily:"inherit"}}/>
-        <button onClick={()=>send(inp)} disabled={busy}
-          style={{width:42,height:42,borderRadius:11,background:`linear-gradient(135deg,${G},${GB})`,border:"none",cursor:busy?"not-allowed":"pointer",fontSize:18,opacity:busy?.4:1,flexShrink:0}}>🚀</button>
-      </div>
-      <div style={{flexShrink:0,textAlign:"center",fontSize:10,color:"#2a5a3a",padding:"3px 0 7px"}}>💡 فكرة م. طراد راكان الزبن • محلل نظم معلومات</div>
-
-      {/* MODAL */}
-      {modal&&<div onClick={()=>setModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:99,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"16px 14px",overflowY:"auto",backdropFilter:"blur(8px)"}}>
-        <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:500,background:D2,border:"1px solid rgba(0,140,65,0.22)",borderRadius:18,overflow:"hidden"}}>
-
-          {/* BASKET MODAL */}
-          {modal==="basket"&&<>
-            <div style={{background:"rgba(0,108,53,0.08)",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid rgba(0,140,65,0.15)"}}>
-              <div><div style={{fontSize:15,fontWeight:900}}>🛒 مصمّم السلة الغذائية</div><div style={{fontSize:10,color:"#6B9E76",marginTop:2}}>أضف المنتجات وريكو يبحث عن أرخص الأسعار</div></div>
-              <button onClick={()=>setModal(null)} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",color:"#fff",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:13}}>✕</button>
-            </div>
-            <div style={{padding:16}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:6,alignItems:"end",marginBottom:10}}>
-                <div>
-                  <div style={{fontSize:11,color:"#6B9E76",marginBottom:4,fontWeight:700}}>المنتج</div>
-                  <select value={bProd} onChange={e=>{setBProd(e.target.value);setBSize("");}} style={sel_style}>
-                    <option value="">-- اختر --</option>
-                    {PRODS.map(g=><optgroup key={g.g} label={g.g}>{g.items.map(([nm])=><option key={nm} value={nm}>{nm}</option>)}</optgroup>)}
-                  </select>
-                </div>
-                <div>
-                  <div style={{fontSize:11,color:"#6B9E76",marginBottom:4,fontWeight:700}}>الحجم</div>
-                  <select value={bSize} onChange={e=>setBSize(e.target.value)} style={sel_style}>
-                    <option value="">-- اختر --</option>
-                    {sizes().map(s=><option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <button onClick={addToBasket} style={{background:`linear-gradient(135deg,${G},${GB})`,color:"#fff",border:"none",borderRadius:8,width:36,height:36,cursor:"pointer",fontSize:20,marginTop:17}}>+</button>
-              </div>
-              {basket.length===0?<div style={{textAlign:"center",padding:16,color:"#6B9E76",fontSize:12}}>🛒 السلة فارغة — أضف منتجات</div>:
-              <div style={{background:"rgba(0,108,53,0.06)",border:"1px solid rgba(0,140,65,0.15)",borderRadius:10,padding:10,marginBottom:10}}>
-                <div style={{fontSize:11,color:GB,fontWeight:700,marginBottom:6}}>🛒 السلة ({basket.length} منتجات)</div>
-                {basket.map(it=><div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:"1px solid rgba(0,140,65,0.1)",fontSize:12}}>
-                  <span>{it.nm} — <span style={{color:GB,fontWeight:700}}>{it.sz}</span></span>
-                  <button onClick={()=>setBasket(p=>p.filter(i=>i.id!==it.id))} style={{background:"rgba(200,50,50,0.15)",border:"1px solid rgba(200,50,50,0.2)",color:"#ff8080",borderRadius:6,padding:"1px 7px",cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>✕</button>
-                </div>)}
-              </div>}
-              <button onClick={searchBasket} style={{width:"100%",background:`linear-gradient(135deg,${G},${GB})`,color:"#fff",border:"none",borderRadius:11,padding:12,fontSize:14,fontWeight:900,cursor:"pointer",fontFamily:"inherit"}}>🔍 ابحث عن أرخص الأسعار</button>
-              <div style={{textAlign:"center",marginTop:6,fontSize:10,color:"#4a7a5a"}}>يقارن بين بنده • كارفور • العثيم • نون • هايبر باندا</div>
-            </div>
-          </>}
-
-          {/* APPS MODAL */}
-          {modal==="apps"&&<>
-            <div style={{background:"rgba(200,168,76,0.07)",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid rgba(0,140,65,0.15)"}}>
-              <div><div style={{fontSize:15,fontWeight:900,color:GLDL}}>📲 التطبيقات المتاحة</div><div style={{fontSize:10,color:"#6B9E76",marginTop:2}}>اضغط على أي تطبيق لفتحه مباشرة</div></div>
-              <button onClick={()=>setModal(null)} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",color:"#fff",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:13}}>✕</button>
-            </div>
-            <div style={{padding:16,maxHeight:"70vh",overflowY:"auto"}}>
-              {APPS_LIST.map((a,i)=>a.sec
-                ?<div key={i} style={{fontSize:10,fontWeight:700,color:GB,letterSpacing:1,margin:"10px 0 5px"}}>{a.sec}</div>
-                :<div key={i} onClick={()=>openApp(a.url,a.nm)} style={{display:"flex",alignItems:"center",gap:9,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(0,140,65,0.15)",borderRadius:10,padding:"8px 11px",marginBottom:6,cursor:"pointer"}}>
-                  <div style={{width:34,height:34,borderRadius:9,background:a.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0,color:a.tc||"#fff"}}>{a.ic}</div>
-                  <div style={{flex:1}}><div style={{fontSize:12,fontWeight:800}}>{a.nm}</div><div style={{fontSize:10,color:"#6B9E76"}}>{a.ds}</div></div>
-                  <span style={{color:GB,fontSize:14,fontWeight:700}}>←</span>
-                </div>
-              )}
-              <button onClick={()=>{setModal(null);send("قارن بين هنقرستيشن وجاهز وكريم من حيث السرعة والسعر والمطاعم المتاحة");}}
-                style={{width:"100%",background:`linear-gradient(135deg,${G},${GB})`,color:"#fff",border:"none",borderRadius:11,padding:11,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:6}}>
-                🤖 اسأل ريكو يقارن بين التطبيقات
-              </button>
-            </div>
-          </>}
-
-          {/* MERCHANT MODAL */}
-          {modal==="merchant"&&<>
-            <div style={{background:"rgba(200,168,76,0.07)",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid rgba(0,140,65,0.15)"}}>
-              <div><div style={{fontSize:15,fontWeight:900,color:GLDL}}>🏪 سجّل نشاطك التجاري</div><div style={{fontSize:10,color:"#6B9E76",marginTop:2}}>أضف متجرك لقاعدة بيانات ريكو</div></div>
-              <button onClick={()=>setModal(null)} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",color:"#fff",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:13}}>✕</button>
-            </div>
-            {mDone?<div style={{padding:"36px 20px",textAlign:"center"}}>
-              <div style={{fontSize:50,marginBottom:12}}>🎉</div>
-              <div style={{fontSize:18,fontWeight:900,color:GLDL,marginBottom:8}}>تم التسجيل بنجاح!</div>
-              <div style={{fontSize:13,color:"#6B9E76",marginBottom:20,lineHeight:1.7}}>تم إضافة نشاطك لقاعدة بيانات ريكو.<br/>سيظهر في النتائج خلال 24 ساعة.</div>
-              <button onClick={()=>setModal(null)} style={{background:`linear-gradient(135deg,${G},${GB})`,color:"#fff",border:"none",borderRadius:11,padding:"10px 28px",fontSize:14,fontWeight:900,cursor:"pointer",fontFamily:"inherit"}}>حسناً ✓</button>
-            </div>:
-            <div style={{padding:16,maxHeight:"70vh",overflowY:"auto"}}>
-              <div style={{fontSize:11,color:"#6B9E76",marginBottom:4,fontWeight:700}}>🏷️ اسم النشاط *</div>
-              <input type="text" placeholder="مثال: مطعم الأصيل" style={inp_style}/>
-              <div style={{fontSize:11,color:"#6B9E76",marginBottom:4,fontWeight:700}}>📂 نوع النشاط *</div>
-              <select style={sel_style}><option value="">-- اختر --</option>{MERCHANT_TYPES.map(t=><option key={t}>{t}</option>)}</select>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <div><div style={{fontSize:11,color:"#6B9E76",marginBottom:4,fontWeight:700}}>🏙️ المدينة</div>
-                  <select style={sel_style}>{["الرياض","جدة","الدمام","مكة المكرمة","المدينة المنورة","الخبر","الطائف","تبوك","أبها","القصيم","حائل","جازان"].map(c=><option key={c}>{c}</option>)}</select>
-                </div>
-                <div><div style={{fontSize:11,color:"#6B9E76",marginBottom:4,fontWeight:700}}>📍 الحي</div><input type="text" placeholder="حي النرجس" style={inp_style}/></div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <div><div style={{fontSize:11,color:"#6B9E76",marginBottom:4,fontWeight:700}}>📞 الهاتف *</div><input type="tel" placeholder="05XXXXXXXX" style={{...inp_style,direction:"ltr",textAlign:"right"}}/></div>
-                <div><div style={{fontSize:11,color:"#6B9E76",marginBottom:4,fontWeight:700}}>💬 واتساب</div><input type="tel" placeholder="05XXXXXXXX" style={{...inp_style,direction:"ltr",textAlign:"right"}}/></div>
-              </div>
-              <div style={{fontSize:11,color:"#6B9E76",marginBottom:4,fontWeight:700}}>🕐 أوقات العمل</div>
-              <input type="text" placeholder="السبت - الخميس 9ص - 11م" style={inp_style}/>
-              <div style={{fontSize:11,color:"#6B9E76",marginBottom:4,fontWeight:700}}>🔥 العروض والخصومات</div>
-              <textarea placeholder="مثال: خصم 20% على وجبات الغداء" style={{...inp_style,resize:"none",height:65}}/>
-              <div style={{fontSize:11,color:"#6B9E76",marginBottom:4,fontWeight:700}}>📝 وصف النشاط</div>
-              <textarea placeholder="اكتب وصفاً مختصراً..." style={{...inp_style,resize:"none",height:65}}/>
-              <button onClick={()=>{setMDone(true);setTimeout(()=>addMsg("a","تم تسجيل نشاطك في ريكو! 🎉 سيظهر في نتائج البحث خلال 24 ساعة."),500);}}
-                style={{width:"100%",background:`linear-gradient(135deg,${GOLD},${GLDL})`,color:"#03100A",border:"none",borderRadius:11,padding:12,fontSize:14,fontWeight:900,cursor:"pointer",fontFamily:"inherit"}}>✅ تسجيل النشاط في ريكو</button>
-            </div>}
-          </>}
-
+      {/* ── Suggestions ── */}
+      {showSugs && (
+        <div className="suggestions">
+          {["🍽️ أفضل مطعم قريب مني","🔥 عروض اليوم","📱 أرخص سعر iPhone الآن","🛒 عروض بنده وكارفور"].map((s, i) => (
+            <button key={i} className="sug-btn" onClick={() => send(s)}>{s}</button>
+          ))}
         </div>
-      </div>}
+      )}
 
-      <style>{`
-        @keyframes bc{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
-        @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-        ::-webkit-scrollbar{width:3px;height:3px}
-        ::-webkit-scrollbar-thumb{background:rgba(0,140,65,0.2);border-radius:2px}
-        *{box-sizing:border-box}
-      `}</style>
+      {/* ── Input ── */}
+      <div className="input-area">
+        <input
+          className="chat-input"
+          value={inp}
+          onChange={e => setInp(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && send(inp)}
+          placeholder="اسألني عن مطعم، عرض، سعر، ورشة... 🔍"
+        />
+        <button className="send-btn" onClick={() => send(inp)} disabled={busy}>🚀</button>
+      </div>
+      <div className="footer-credit">💡 فكرة م. طراد راكان الزبن • محلل نظم معلومات</div>
+
+      {/* ── Modal ── */}
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+
+            {/* Basket */}
+            {modal === "basket" && <>
+              <div className="modal-hdr green">
+                <div>
+                  <div className="modal-title">🛒 مصمّم السلة الغذائية</div>
+                  <div className="modal-sub">أضف المنتجات وريكو يبحث عن أرخص الأسعار</div>
+                </div>
+                <button className="modal-close" onClick={() => setModal(null)}>✕</button>
+              </div>
+              <div className="modal-body">
+                <div className="f-grid f-grid-3">
+                  <div>
+                    <label className="f-label">المنتج</label>
+                    <select className="f-select" value={bProd} onChange={e => { setBProd(e.target.value); setBSize(""); }}>
+                      <option value="">-- اختر --</option>
+                      {PRODS.map(g => (
+                        <optgroup key={g.g} label={g.g}>
+                          {g.items.map(([nm]) => <option key={nm} value={nm}>{nm}</option>)}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="f-label">الحجم</label>
+                    <select className="f-select" value={bSize} onChange={e => setBSize(e.target.value)}>
+                      <option value="">-- اختر --</option>
+                      {sizes().map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <button className="add-btn" onClick={addToBasket}>+</button>
+                </div>
+                {basket.length === 0
+                  ? <div className="basket-empty">🛒 السلة فارغة — أضف منتجات للمقارنة</div>
+                  : <div className="basket-list">
+                      <div className="basket-list-hdr">🛒 السلة ({basket.length} منتجات)</div>
+                      {basket.map(it => (
+                        <div key={it.id} className="basket-item">
+                          <span>{it.nm} — <span style={{ color: GB, fontWeight: 700 }}>{it.sz}</span></span>
+                          <button className="basket-rm" onClick={() => setBasket(p => p.filter(i => i.id !== it.id))}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                }
+                <button className="btn-full green" onClick={searchBasket}>🔍 ابحث عن أرخص الأسعار</button>
+                <div className="btn-note">يقارن بين بنده • كارفور • العثيم • نون • هايبر باندا</div>
+              </div>
+            </>}
+
+            {/* Apps */}
+            {modal === "apps" && <>
+              <div className="modal-hdr gold">
+                <div>
+                  <div className="modal-title gold">📲 التطبيقات المتاحة</div>
+                  <div className="modal-sub">اضغط على أي تطبيق لفتحه مباشرة</div>
+                </div>
+                <button className="modal-close" onClick={() => setModal(null)}>✕</button>
+              </div>
+              <div className="modal-body">
+                {APPS_LIST.map((a, i) => a.sec
+                  ? <div key={i} className="app-section">{a.sec}</div>
+                  : <div key={i} className="app-item" onClick={() => openApp(a.url, a.nm)}>
+                      <div className="app-icon" style={{ background: a.bg, color: a.tc || "#fff" }}>{a.ic}</div>
+                      <div style={{ flex: 1 }}>
+                        <div className="app-name">{a.nm}</div>
+                        <div className="app-ds">{a.ds}</div>
+                      </div>
+                      <span className="app-arr">←</span>
+                    </div>
+                )}
+                <button className="btn-full green" style={{ marginTop: 8 }}
+                  onClick={() => { setModal(null); send("قارن بين هنقرستيشن وجاهز وكريم من حيث السرعة والسعر والمطاعم المتاحة"); }}>
+                  🤖 اسأل ريكو يقارن بين التطبيقات
+                </button>
+              </div>
+            </>}
+
+            {/* Merchant */}
+            {modal === "merchant" && <>
+              <div className="modal-hdr gold">
+                <div>
+                  <div className="modal-title gold">🏪 سجّل نشاطك التجاري</div>
+                  <div className="modal-sub">أضف متجرك لقاعدة بيانات ريكو</div>
+                </div>
+                <button className="modal-close" onClick={() => setModal(null)}>✕</button>
+              </div>
+              {mDone
+                ? <div className="success">
+                    <div className="success-emoji">🎉</div>
+                    <div className="success-title">تم التسجيل بنجاح!</div>
+                    <div className="success-txt">تم إضافة نشاطك لقاعدة بيانات ريكو.<br/>سيظهر في النتائج خلال 24 ساعة.</div>
+                    <button className="btn-full green" style={{ maxWidth: 200, margin: "0 auto", display: "block" }}
+                      onClick={() => setModal(null)}>حسناً ✓</button>
+                  </div>
+                : <div className="modal-body">
+                    <label className="f-label">🏷️ اسم النشاط *</label>
+                    <input className="f-input" type="text" placeholder="مثال: مطعم الأصيل"/>
+
+                    <label className="f-label">📂 نوع النشاط *</label>
+                    <select className="f-select">
+                      <option value="">-- اختر --</option>
+                      {MERCHANT_TYPES.map(t => <option key={t}>{t}</option>)}
+                    </select>
+
+                    <div className="f-grid f-grid-2">
+                      <div>
+                        <label className="f-label">🏙️ المدينة</label>
+                        <select className="f-select">
+                          {CITIES.map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="f-label">📍 الحي</label>
+                        <input className="f-input" type="text" placeholder="حي النرجس"/>
+                      </div>
+                    </div>
+
+                    <div className="f-grid f-grid-2">
+                      <div>
+                        <label className="f-label">📞 الهاتف *</label>
+                        <input className="f-input f-ltr" type="tel" placeholder="05XXXXXXXX"/>
+                      </div>
+                      <div>
+                        <label className="f-label">💬 واتساب</label>
+                        <input className="f-input f-ltr" type="tel" placeholder="05XXXXXXXX"/>
+                      </div>
+                    </div>
+
+                    <label className="f-label">🕐 أوقات العمل</label>
+                    <input className="f-input" type="text" placeholder="السبت - الخميس 9ص - 11م"/>
+
+                    <label className="f-label">🔥 العروض والخصومات</label>
+                    <textarea className="f-textarea" placeholder="مثال: خصم 20% على وجبات الغداء"/>
+
+                    <label className="f-label">📝 وصف النشاط</label>
+                    <textarea className="f-textarea" placeholder="اكتب وصفاً مختصراً..."/>
+
+                    <button className="btn-full gold"
+                      onClick={() => {
+                        setMDone(true);
+                        setTimeout(() => addMsg("a", "تم تسجيل نشاطك في ريكو! 🎉 سيظهر في نتائج البحث خلال 24 ساعة."), 500);
+                      }}>
+                      ✅ تسجيل النشاط في ريكو
+                    </button>
+                  </div>
+              }
+            </>}
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }
